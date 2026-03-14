@@ -5,7 +5,7 @@ require("dotenv").config();
 const dns = require("dns");
 dns.setDefaultResultOrder("ipv4first");
 
-// Import routes
+
 const languageRoutes = require("./routes/languageRoutes");
 const alphabetRoutes = require("./routes/alphabetRoutes");
 const communicationRoutes = require("./routes/commbasicsRoutes");
