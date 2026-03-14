@@ -98,14 +98,12 @@ app.use('/api/vocabulary/questions', vocabularyQuestionRoutes);
 app.use('/', blankQuestionsRoutes);
 //app.use("/api/questionformsquestions", questionformsquestionsroutes);
 
-// MongoDB connect and server start
 mongoose
   .connect(process.env.MONGO_URI)
   .then(() => {
     console.log("MongoDB connected");
     app.listen(5000, () => console.log("Server running on port 5000"));
   })
-  .catch((err) => console.log(err));
-
+  .catch((err) => {
     console.error("MongoDB connection error:", err);
   });
