@@ -160,6 +160,9 @@ app.use(express.urlencoded({ extended: true }));
 let client;
 try {
   const credentials = JSON.parse(process.env.GOOGLE_TTS_KEY);
+    if (credentials.private_key) {
+    credentials.private_key = credentials.private_key.replace(/\\n/g, '\n');
+  }
   client = new textToSpeech.TextToSpeechClient({ credentials });
   console.log('✅ Google TTS client initialized successfully');
 } catch (error) {
