@@ -1,8 +1,10 @@
 // routes/questionformsquestionsRoutes.js
+
 const express = require("express");
 const {
   getAllQuestions,
   getQuestionsByType,
+  getQuestionsByTypeId,
   getQuestionById,
   createQuestion,
   updateQuestion,
@@ -14,10 +16,14 @@ const router = express.Router();
 // Get all questions
 router.get("/", getAllQuestions);
 
-// Get questions by type
+// ✅ IMPORTANT: Put more specific routes BEFORE generic ones
+// Get questions by MongoDB _id
+router.get("/typeid/:id", getQuestionsByTypeId);
+
+// Get questions by type string (e.g., "yes/no-questions")
 router.get("/type/:typeId", getQuestionsByType);
 
-// Get single question by ID
+// Get single question by ID - THIS MUST COME LAST
 router.get("/:id", getQuestionById);
 
 // Create new question
@@ -29,5 +35,4 @@ router.put("/:id", updateQuestion);
 // Delete question
 router.delete("/:id", deleteQuestion);
 
-// Export for CommonJS
 module.exports = router;
