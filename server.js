@@ -25,7 +25,7 @@ const uiTranslateRoutes = require("./routes/uiTranslateRoutes");
 const modulesRoutes = require("./routes/modules");
 const questionRoutes = require("./routes/questionRoutes");
 const scoreRoutes = require('./routes/scoreRoutes');
-const questionformsquestionsroutes = require("./routes/questionformsquestionsroutes");
+const questionformsquestionsroutes = require("./routes/questionformsquestionsRoutes");
 const vocabularyRoutes = require('./routes/vocabularyRoutes');
 const vocabularyQuestionRoutes = require('./routes/vocabularyQuestionRoutes');
 const blankQuestionsRoutes = require('./routes/blankQuestions');
@@ -94,7 +94,7 @@ app.use("/api/questions", questionRoutes);
 app.use('/api/scores', scoreRoutes);
 // ✅ FIX: Use a specific path, not root '/'
 app.use("/api/blank-questions", blankQuestionsRoutes);
-app.use("/api/questionformsquestions", questionformsquestionsroutes);
+app.use("/api/questionformsquestions", questionFormsQuestionsRoutes);
 
 // MongoDB connect and server start
 mongoose
