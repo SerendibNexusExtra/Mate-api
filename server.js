@@ -54,13 +54,13 @@ try {
       process.env.GOOGLE_TTS_CREDENTIALS
     );
 
-    // Important for Railway/environment variables
-    if (credentials.private_key) {
-      credentials.private_key = credentials.private_key.replace(
-        /\\n/g,
-        "\n"
-      );
-    }
+    // WITH THIS ROBUST NORMALIZATION:
+if (credentials.private_key) {
+  credentials.private_key = credentials.private_key
+    .replace(/\\n/g, '\n')       // Convert literal escaped \n to real newlines
+    .replace(/\r\n/g, '\n')      // Remove Windows-style carriage returns
+    .trim();
+}
 
     console.log("🔍 Project:", credentials.project_id);
     console.log("🔍 Email:", credentials.client_email);
