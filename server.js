@@ -41,49 +41,78 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// ============================================
-// 🔧 TTS CLIENT - WORKS BOTH LOCALLY AND ON RAILWAY
-// ============================================
 let client;
 let ttsInitialized = false;
 
 try {
-  console.log('🚀 Initializing TTS client...');
+  console.log("🚀 Initializing TTS client...");
 
-  // METHOD 1: Environment variable (Railway)
   if (process.env.GOOGLE_TTS_CREDENTIALS) {
-    console.log('✅ Using GOOGLE_TTS_CREDENTIALS from environment');
-    const credentials = JSON.parse(process.env.GOOGLE_TTS_CREDENTIALS);
-    client = new textToSpeech.TextToSpeechClient({ 
-      credentials: credentials 
+    console.log("✅ GOOGLE_TTS_CREDENTIALS found");
+
+    const credentials = JSON.parse(
+      process.env.GOOGLE_TTS_CREDENTIALS
+    );
+
+    // Important for Railway/environment variables
+    if (credentials.private_key) {
+      credentials.private_key = credentials.private_key.replace(
+        /\\n/g,
+        "\n"
+      );
+    }
+
+    console.log("🔍 Project:", credentials.project_id);
+    console.log("🔍 Email:", credentials.client_email);
+    console.log(
+      "🔍 Private key:",
+      credentials.private_key ? "Present" : "Missing"
+    );
+
+    client = new textToSpeech.TextToSpeechClient({
+      projectId: credentials.project_id,
+      credentials: {
+        client_email: credentials.client_email,
+        private_key: credentials.private_key,
+      },
     });
+
     ttsInitialized = true;
-    console.log('✅ TTS initialized from environment variable');
-  } 
-  // METHOD 2: Local file (development)
-  else {
-    const localKeyPath = path.join(__dirname, 'google-tts-key.json');
-    console.log('🔍 Looking for local key at:', localKeyPath);
+
+    console.log("✅ TTS initialized from Railway credentials");
+  } else {
+    const localKeyPath = path.join(
+      __dirname,
+      "google-tts-key.json"
+    );
+
+    console.log("🔍 Looking for local key:", localKeyPath);
+
     if (fs.existsSync(localKeyPath)) {
-      console.log('✅ Using local key file');
+      console.log("✅ Using local Google TTS key");
+
       client = new textToSpeech.TextToSpeechClient({
         keyFilename: localKeyPath,
       });
+
       ttsInitialized = true;
-      console.log('✅ TTS initialized from local file');
+
+      console.log("✅ TTS initialized from local file");
     } else {
-      console.error('❌ No TTS credentials found');
+      console.error("❌ No TTS credentials found");
     }
   }
-
 } catch (error) {
-  console.error('❌ Failed to initialize TTS:', error.message);
+  console.error("❌ Failed to initialize TTS:", error);
   client = null;
   ttsInitialized = false;
 }
 
-console.log(`📊 TTS Status: ${ttsInitialized ? '✅ Initialized' : '❌ Not Initialized'}`);
-console.log('Registering TTS route at /api/tts/speak');
+console.log(
+  `📊 TTS Status: ${
+    ttsInitialized ? "✅ Initialized" : "❌ Not Initialized"
+  }`
+);
 
 // ============================================
 // 🔧 TTS ENDPOINT - FIXED VOICE ISSUE
