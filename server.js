@@ -4,6 +4,8 @@ const cors = require("cors");
 require("dotenv").config();
 const dns = require("dns");
 dns.setDefaultResultOrder("ipv4first");
+const fs = require('fs');
+const path = require('path');
 
 // Import routes
 const languageRoutes = require("./routes/languageRoutes");
@@ -25,7 +27,7 @@ const uiTranslateRoutes = require("./routes/uiTranslateRoutes");
 const modulesRoutes = require("./routes/modules");
 const questionRoutes = require("./routes/questionRoutes");
 const scoreRoutes = require('./routes/scoreRoutes');
-const questionFormsQuestionsRoutes  = require("./routes/questionformsquestionsRoutes");
+const questionFormsQuestionsRoutes = require("./routes/questionformsquestionsRoutes");
 const vocabularyRoutes = require('./routes/vocabularyRoutes');
 const vocabularyQuestionRoutes = require('./routes/vocabularyQuestionRoutes');
 const blankQuestionsRoutes = require('./routes/blankQuestions');
@@ -39,31 +41,116 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Initialize TTS client
-const client = new textToSpeech.TextToSpeechClient({
-  keyFilename: 'google-tts-key.json',
-});
+// ============================================
+// 🔧 TTS CLIENT - WORKS BOTH LOCALLY AND ON RAILWAY
+// ============================================
+let client;
+let ttsInitialized = false;
 
+try {
+  console.log('🚀 Initializing TTS client...');
+
+  // METHOD 1: Environment variable (Railway)
+  if (process.env.GOOGLE_TTS_CREDENTIALS) {
+    console.log('✅ Using GOOGLE_TTS_CREDENTIALS from environment');
+    const credentials = JSON.parse(process.env.GOOGLE_TTS_CREDENTIALS);
+    client = new textToSpeech.TextToSpeechClient({ 
+      credentials: credentials 
+    });
+    ttsInitialized = true;
+    console.log('✅ TTS initialized from environment variable');
+  } 
+  // METHOD 2: Local file (development)
+  else {
+    const localKeyPath = path.join(__dirname, 'google-tts-key.json');
+    console.log('🔍 Looking for local key at:', localKeyPath);
+    if (fs.existsSync(localKeyPath)) {
+      console.log('✅ Using local key file');
+      client = new textToSpeech.TextToSpeechClient({
+        keyFilename: localKeyPath,
+      });
+      ttsInitialized = true;
+      console.log('✅ TTS initialized from local file');
+    } else {
+      console.error('❌ No TTS credentials found');
+    }
+  }
+
+} catch (error) {
+  console.error('❌ Failed to initialize TTS:', error.message);
+  client = null;
+  ttsInitialized = false;
+}
+
+console.log(`📊 TTS Status: ${ttsInitialized ? '✅ Initialized' : '❌ Not Initialized'}`);
 console.log('Registering TTS route at /api/tts/speak');
 
-// POST /tts endpoint
+// ============================================
+// 🔧 TTS ENDPOINT - FIXED VOICE ISSUE
+// ============================================
 app.post('/api/tts/speak', async (req, res) => {
   try {
-    console.log('TTS request received:', req.body);
+    console.log('📢 TTS request received:', req.body);
     const { text, languageCode } = req.body;
 
+    if (!text) {
+      return res.status(400).json({ error: 'Text is required' });
+    }
+
+    if (!ttsInitialized || !client) {
+      return res.status(503).json({ 
+        error: 'TTS service not configured',
+        details: 'Client not initialized. Check server logs.'
+      });
+    }
+
+    // Fixed: Use FEMALE instead of NEUTRAL
     const request = {
       input: { text },
-      voice: { languageCode: languageCode || 'en-US', ssmlGender: 'NEUTRAL' },
-      audioConfig: { audioEncoding: 'MP3', speakingRate: 0.85 },
+      voice: { 
+        languageCode: languageCode || 'en-US', 
+        ssmlGender: 'FEMALE'  // Changed from NEUTRAL to FEMALE
+      },
+      audioConfig: { 
+        audioEncoding: 'MP3', 
+        speakingRate: 0.85 
+      },
     };
 
+    console.log('⏳ Sending to Google TTS...');
     const [response] = await client.synthesizeSpeech(request);
-    res.json({ audioContent: response.audioContent.toString('base64') });
+
+    if (!response || !response.audioContent) {
+      throw new Error('No audio content received');
+    }
+
+    console.log('✅ TTS success! Audio size:', response.audioContent.length);
+
+    res.json({ 
+      audioContent: response.audioContent.toString('base64'),
+      success: true 
+    });
+
   } catch (error) {
-    console.error('TTS backend error:', error);
-    res.status(500).json({ error: 'TTS failed' });
+    console.error('❌ TTS backend error:', error);
+    res.status(500).json({ 
+      error: 'TTS failed',
+      details: error.message 
+    });
   }
+});
+
+// ============================================
+// 🔧 DEBUG ENDPOINT
+// ============================================
+app.get('/api/tts-debug', (req, res) => {
+  res.json({
+    ttsInitialized: ttsInitialized,
+    hasClient: !!client,
+    hasCredentials: !!process.env.GOOGLE_TTS_CREDENTIALS,
+    credentialsLength: process.env.GOOGLE_TTS_CREDENTIALS?.length || 0,
+    environment: process.env.NODE_ENV || 'development'
+  });
 });
 
 // Register routes
@@ -79,10 +166,10 @@ app.use("/api/basictenses", basicTenseRoutes);
 app.use("/api/pronouns", pronounsRoutes);
 app.use("/api/reading", readingRoutes);
 app.use('/api/vocabulary', vocabularyRoutes);
-app.use('/api/vocabulary/questions', vocabularyQuestionRoutes);  // Only ONCE
+app.use('/api/vocabulary/questions', vocabularyQuestionRoutes);
 
 // Pronunciation routes
-app.use("/api/pronunciation", pronunciationRoutes);      
+app.use("/api/pronunciation", pronunciationRoutes);
 app.use("/api/pronunciation-questions", pronunciationQRoutes);
 app.use('/api/grammar', grammarRoutes);
 app.use('/api/grammar/questions', grammarQuestionRoutes);
@@ -92,7 +179,6 @@ app.use("/api/modules", modulesRoutes);
 app.use("/api/ui-translate", uiTranslateRoutes);
 app.use("/api/questions", questionRoutes);
 app.use('/api/scores', scoreRoutes);
-// ✅ FIX: Use a specific path, not root '/'
 app.use("/api/blank-questions", blankQuestionsRoutes);
 app.use("/api/questionformsquestions", questionFormsQuestionsRoutes);
 
@@ -101,6 +187,9 @@ mongoose
   .connect(process.env.MONGO_URI)
   .then(() => {
     console.log("MongoDB connected");
-    app.listen(5000, () => console.log("Server running on port 5000"));
+    app.listen(5000, () => {
+      console.log("Server running on port 5000");
+      console.log(`📊 TTS Status: ${ttsInitialized ? '✅ Initialized' : '❌ Not Initialized'}`);
+    });
   })
   .catch((err) => console.log(err));
