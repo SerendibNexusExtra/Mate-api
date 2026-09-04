@@ -173,15 +173,36 @@ app.post('/api/tts/speak', async (req, res) => {
 // 🔧 DEBUG ENDPOINT
 // ============================================
 app.get('/api/tts-debug', (req, res) => {
+  let credentialInfo = {};
+
+  try {
+    if (process.env.GOOGLE_TTS_CREDENTIALS) {
+      const credentials = JSON.parse(
+        process.env.GOOGLE_TTS_CREDENTIALS
+      );
+
+      credentialInfo = {
+        projectId: credentials.project_id,
+        clientEmail: credentials.client_email,
+        hasPrivateKey: !!credentials.private_key,
+        privateKeyLength: credentials.private_key?.length || 0,
+        privateKeyStartsCorrectly:
+          credentials.private_key?.startsWith("-----BEGIN PRIVATE KEY-----"),
+      };
+    }
+  } catch (error) {
+    credentialInfo = {
+      parseError: error.message,
+    };
+  }
+
   res.json({
-    ttsInitialized: ttsInitialized,
+    ttsInitialized,
     hasClient: !!client,
-    hasCredentials: !!process.env.GOOGLE_TTS_CREDENTIALS,
-    credentialsLength: process.env.GOOGLE_TTS_CREDENTIALS?.length || 0,
-    environment: process.env.NODE_ENV || 'development'
+    credentials: credentialInfo,
+    environment: process.env.NODE_ENV || "development",
   });
 });
-
 // Register routes
 app.use("/api/languages", languageRoutes);
 app.use("/api/alphabet", alphabetRoutes);
