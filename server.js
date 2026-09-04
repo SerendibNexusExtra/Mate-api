@@ -7,7 +7,7 @@ dns.setDefaultResultOrder("ipv4first");
 const fs = require('fs');
 const path = require('path');
 
-// Import routes
+// routes
 const languageRoutes = require("./routes/languageRoutes");
 const alphabetRoutes = require("./routes/alphabetRoutes");
 const communicationRoutes = require("./routes/commbasicsRoutes");
