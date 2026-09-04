@@ -47,23 +47,27 @@ let ttsInitialized = false;
 try {
   console.log("🚀 Initializing TTS client...");
 
-  if (process.env.GOOGLE_TTS_CREDENTIALS) {
-  let credentials = process.env.GOOGLE_TTS_CREDENTIALS;
+  let credentials;
 
-  // If it's still a string, parse it
-  if (typeof credentials === "string") {
-    try {
-      credentials = JSON.parse(credentials);
-      // If it was double-stringified, parse one more time
-      if (typeof credentials === "string") {
-        credentials = JSON.parse(credentials);
-      }
-    } catch (err) {
-      console.error("Failed to parse GOOGLE_TTS_CREDENTIALS JSON:", err);
+  // 1. Prefer Base64 (Reliable in Railway)
+  if (process.env.GOOGLE_TTS_CREDENTIALS_BASE64) {
+    console.log("✅ GOOGLE_TTS_CREDENTIALS_BASE64 found");
+    const decoded = Buffer.from(
+      process.env.GOOGLE_TTS_CREDENTIALS_BASE64,
+      "base64"
+    ).toString("utf-8");
+    credentials = JSON.parse(decoded);
+  } else if (process.env.GOOGLE_TTS_CREDENTIALS) {
+    // 2. Fallback to raw string if present
+    let raw = process.env.GOOGLE_TTS_CREDENTIALS;
+    if (typeof raw === "string") {
+      credentials = JSON.parse(raw);
+      if (typeof credentials === "string") credentials = JSON.parse(credentials);
     }
   }
 
   if (credentials && credentials.private_key) {
+    // Normalize newlines in RSA key
     credentials.private_key = credentials.private_key
       .replace(/\\n/g, "\n")
       .replace(/\r\n/g, "\n")
@@ -78,31 +82,16 @@ try {
     });
 
     ttsInitialized = true;
-    console.log("✅ TTS initialized successfully");
-  }
-
-
-    console.log("✅ TTS initialized from Railway credentials");
+    console.log("✅ TTS client initialized successfully!");
   } else {
-    const localKeyPath = path.join(
-      __dirname,
-      "google-tts-key.json"
-    );
-
-    console.log("🔍 Looking for local key:", localKeyPath);
-
+    // 3. Local key fallback
+    const localKeyPath = path.join(__dirname, "google-tts-key.json");
     if (fs.existsSync(localKeyPath)) {
-      console.log("✅ Using local Google TTS key");
-
-      client = new textToSpeech.TextToSpeechClient({
-        keyFilename: localKeyPath,
-      });
-
+      client = new textToSpeech.TextToSpeechClient({ keyFilename: localKeyPath });
       ttsInitialized = true;
-
       console.log("✅ TTS initialized from local file");
     } else {
-      console.error("❌ No TTS credentials found");
+      console.error("❌ No valid credentials found");
     }
   }
 } catch (error) {
@@ -110,12 +99,6 @@ try {
   client = null;
   ttsInitialized = false;
 }
-
-console.log(
-  `📊 TTS Status: ${
-    ttsInitialized ? "✅ Initialized" : "❌ Not Initialized"
-  }`
-);
 
 // ============================================
 // 🔧 TTS ENDPOINT - FIXED VOICE ISSUE
