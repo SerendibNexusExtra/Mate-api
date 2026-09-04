@@ -48,26 +48,26 @@ try {
   console.log("🚀 Initializing TTS client...");
 
   if (process.env.GOOGLE_TTS_CREDENTIALS) {
-    console.log("✅ GOOGLE_TTS_CREDENTIALS found");
+  let credentials = process.env.GOOGLE_TTS_CREDENTIALS;
 
-    const credentials = JSON.parse(
-      process.env.GOOGLE_TTS_CREDENTIALS
-    );
+  // If it's still a string, parse it
+  if (typeof credentials === "string") {
+    try {
+      credentials = JSON.parse(credentials);
+      // If it was double-stringified, parse one more time
+      if (typeof credentials === "string") {
+        credentials = JSON.parse(credentials);
+      }
+    } catch (err) {
+      console.error("Failed to parse GOOGLE_TTS_CREDENTIALS JSON:", err);
+    }
+  }
 
-    // WITH THIS ROBUST NORMALIZATION:
-if (credentials.private_key) {
-  credentials.private_key = credentials.private_key
-    .replace(/\\n/g, '\n')       // Convert literal escaped \n to real newlines
-    .replace(/\r\n/g, '\n')      // Remove Windows-style carriage returns
-    .trim();
-}
-
-    console.log("🔍 Project:", credentials.project_id);
-    console.log("🔍 Email:", credentials.client_email);
-    console.log(
-      "🔍 Private key:",
-      credentials.private_key ? "Present" : "Missing"
-    );
+  if (credentials && credentials.private_key) {
+    credentials.private_key = credentials.private_key
+      .replace(/\\n/g, "\n")
+      .replace(/\r\n/g, "\n")
+      .trim();
 
     client = new textToSpeech.TextToSpeechClient({
       projectId: credentials.project_id,
@@ -78,6 +78,9 @@ if (credentials.private_key) {
     });
 
     ttsInitialized = true;
+    console.log("✅ TTS initialized successfully");
+  }
+
 
     console.log("✅ TTS initialized from Railway credentials");
   } else {
