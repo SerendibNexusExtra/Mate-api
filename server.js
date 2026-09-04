@@ -175,24 +175,30 @@ app.post('/api/tts/speak', async (req, res) => {
 app.get('/api/tts-debug', (req, res) => {
   let credentialInfo = {};
 
-  try {
-    if (process.env.GOOGLE_TTS_CREDENTIALS) {
-      const credentials = JSON.parse(
-        process.env.GOOGLE_TTS_CREDENTIALS
-      );
+  const rawEnv = process.env.GOOGLE_TTS_CREDENTIALS;
 
+  if (rawEnv) {
+    try {
+      const credentials = JSON.parse(rawEnv);
       credentialInfo = {
+        hasEnvVar: true,
         projectId: credentials.project_id,
         clientEmail: credentials.client_email,
         hasPrivateKey: !!credentials.private_key,
         privateKeyLength: credentials.private_key?.length || 0,
-        privateKeyStartsCorrectly:
-          credentials.private_key?.startsWith("-----BEGIN PRIVATE KEY-----"),
+        privateKeyStartsCorrectly: credentials.private_key?.startsWith("-----BEGIN PRIVATE KEY-----"),
+      };
+    } catch (error) {
+      credentialInfo = {
+        hasEnvVar: true,
+        parseError: error.message,
+        rawPreview: rawEnv.substring(0, 30) + '...',
       };
     }
-  } catch (error) {
+  } else {
     credentialInfo = {
-      parseError: error.message,
+      hasEnvVar: false,
+      message: "GOOGLE_TTS_CREDENTIALS is not defined in process.env",
     };
   }
 
