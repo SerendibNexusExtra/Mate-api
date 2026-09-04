@@ -158,33 +158,42 @@ app.post('/api/tts/speak', async (req, res) => {
 // ============================================
 // 🔧 DEBUG ENDPOINT
 // ============================================
-app.get('/api/tts-debug', (req, res) => {
+app.get("/api/tts-debug", (req, res) => {
   let credentialInfo = {};
+  const hasBase64 = !!process.env.GOOGLE_TTS_CREDENTIALS_BASE64;
+  const hasRaw = !!process.env.GOOGLE_TTS_CREDENTIALS;
 
-  const rawEnv = process.env.GOOGLE_TTS_CREDENTIALS;
+  try {
+    let creds;
+    if (hasBase64) {
+      const decoded = Buffer.from(process.env.GOOGLE_TTS_CREDENTIALS_BASE64, "base64").toString("utf-8");
+      creds = JSON.parse(decoded);
+    } else if (hasRaw) {
+      let raw = process.env.GOOGLE_TTS_CREDENTIALS;
+      creds = typeof raw === "string" ? JSON.parse(raw) : raw;
+      if (typeof creds === "string") creds = JSON.parse(creds);
+    }
 
-  if (rawEnv) {
-    try {
-      const credentials = JSON.parse(rawEnv);
+    if (creds) {
       credentialInfo = {
         hasEnvVar: true,
-        projectId: credentials.project_id,
-        clientEmail: credentials.client_email,
-        hasPrivateKey: !!credentials.private_key,
-        privateKeyLength: credentials.private_key?.length || 0,
-        privateKeyStartsCorrectly: credentials.private_key?.startsWith("-----BEGIN PRIVATE KEY-----"),
+        source: hasBase64 ? "base64" : "raw_json",
+        projectId: creds.project_id,
+        clientEmail: creds.client_email,
+        hasPrivateKey: !!creds.private_key,
+        privateKeyLength: creds.private_key?.length || 0,
+        privateKeyStartsCorrectly: creds.private_key?.startsWith("-----BEGIN PRIVATE KEY-----"),
       };
-    } catch (error) {
+    } else {
       credentialInfo = {
-        hasEnvVar: true,
-        parseError: error.message,
-        rawPreview: rawEnv.substring(0, 30) + '...',
+        hasEnvVar: false,
+        message: "Neither GOOGLE_TTS_CREDENTIALS_BASE64 nor GOOGLE_TTS_CREDENTIALS found",
       };
     }
-  } else {
+  } catch (error) {
     credentialInfo = {
-      hasEnvVar: false,
-      message: "GOOGLE_TTS_CREDENTIALS is not defined in process.env",
+      hasEnvVar: hasBase64 || hasRaw,
+      parseError: error.message,
     };
   }
 
@@ -195,6 +204,8 @@ app.get('/api/tts-debug', (req, res) => {
     environment: process.env.NODE_ENV || "development",
   });
 });
+
+
 // Register routes
 app.use("/api/languages", languageRoutes);
 app.use("/api/alphabet", alphabetRoutes);
