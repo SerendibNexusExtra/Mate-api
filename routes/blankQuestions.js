@@ -3,9 +3,12 @@ const router = express.Router();
 const BlankQuestion = require('../models/BlankQuestion');
 
 // GET questions by language code and tense
-router.get('/api/questions/:languageCode/:tense', async (req, res) => {
+// Now: /api/blank-questions/:languageCode/:tense
+router.get('/:languageCode/:tense', async (req, res) => {
   try {
     const { languageCode, tense } = req.params;
+    
+    console.log(`Fetching questions for: ${languageCode} - ${tense}`);
     
     const questions = await BlankQuestion.find({
       languageCode: languageCode,
@@ -14,6 +17,7 @@ router.get('/api/questions/:languageCode/:tense', async (req, res) => {
       module: 'basic-tenses'
     });
 
+    console.log(`Found ${questions.length} questions`);
     res.json(questions);
   } catch (error) {
     console.error('Error fetching questions:', error);
@@ -22,7 +26,7 @@ router.get('/api/questions/:languageCode/:tense', async (req, res) => {
 });
 
 // GET questions by language code only
-router.get('/api/questions/:languageCode', async (req, res) => {
+router.get('/:languageCode', async (req, res) => {
   try {
     const { languageCode } = req.params;
     
@@ -40,7 +44,7 @@ router.get('/api/questions/:languageCode', async (req, res) => {
 });
 
 // POST new question (for admin)
-router.post('/api/questions', async (req, res) => {
+router.post('/', async (req, res) => {
   try {
     const newQuestion = new BlankQuestion(req.body);
     const savedQuestion = await newQuestion.save();
@@ -52,7 +56,7 @@ router.post('/api/questions', async (req, res) => {
 });
 
 // UPDATE question (for admin)
-router.put('/api/questions/:id', async (req, res) => {
+router.put('/:id', async (req, res) => {
   try {
     const updatedQuestion = await BlankQuestion.findByIdAndUpdate(
       req.params.id,
@@ -67,7 +71,7 @@ router.put('/api/questions/:id', async (req, res) => {
 });
 
 // DELETE question (for admin)
-router.delete('/api/questions/:id', async (req, res) => {
+router.delete('/:id', async (req, res) => {
   try {
     await BlankQuestion.findByIdAndDelete(req.params.id);
     res.json({ message: 'Question deleted successfully' });
